@@ -1,0 +1,242 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <title>Azure App Service - Sample Static HTML Site OK</title>
+
+    <script type="text/javascript">
+
+        this.m_bLeftMouseDown = false;
+        this.m_websocketConnection = null;
+
+        function CreateCanvas(x,y,width,height,parentElement,szID,szBorder,bAdd)
+        {
+            canvas = document.createElement("canvas");
+
+            canvas.id = szID;
+            canvas.style.left = x.toString() + 'px';
+            canvas.style.top = y.toString() + 'px';
+            canvas.style.position = "absolute";
+            canvas.style.border = szBorder;
+            canvas.width = width;
+            canvas.height = height;
+    
+            if(bAdd)
+            {
+                parentElement.appendChild(canvas);
+            }
+    
+            return canvas;
+        }
+
+        function OnWebSocketBinConnectionMessage(event)
+        {
+            if (event.data.toString() != "[object ArrayBuffer]")
+            {
+                var szText = event.data.toString();
+
+                if (szText.indexOf("Server connection accepted") >= 0)
+                {
+                    document.title = szText;
+                }
+                else
+                {
+                    alert(event.data.toString());
+                }
+            }
+            else
+            {
+                var dataview = new DataView(event.data);
+                 
+                var nOpCode = dataview.getInt32(4, true);
+                
+                var nClientUniqueID = dataview.getInt32(0, true);
+                
+                if (nOpCode == 0)
+                {
+                    var x = dataview.getInt32(8, true);
+                    var y = dataview.getInt32(12, true);
+                	    
+                    this.m_parent.m_backgroundCanvasContext.strokeStyle = "white";
+				
+					this.m_parent.m_backgroundCanvasContext.beginPath();
+				
+					this.m_parent.m_backgroundCanvasContext.moveTo(x - 1, y);
+                    this.m_parent.m_backgroundCanvasContext.lineTo(x + 1, y);
+                    
+                    this.m_parent.m_backgroundCanvasContext.stroke();
+                }
+                else if(nOpCode == 1)
+                {
+                    //document.title = "X" + Math.random();
+                }
+            }
+        }
+
+        function OnWebSocketBinConnectionClose()
+        {
+            this.m_parent.m_websocketConnection = null;
+
+            //alert("WS CLOSED");
+        }
+
+        function OnWebSocketBinConnectionOpen()
+        {
+            //document.title = "OK";
+            //alert("Connection Opened");
+        }
+
+        function OnWebSocketConnectionError(error)
+        {
+            //alert("Websocket Error");
+        }
+
+        function GetWindowInnerWidth()
+        {
+            if(window.innerWidth)
+            {
+                  var innerWidth = window.innerWidth;
+            }
+            else if(document.documentElement)
+            {
+                  var innerWidth = document.documentElement.clientWidth;
+            }
+            else
+            {
+                  var innerWidth = document.body.clientWidth;
+            }
+
+            return innerWidth;
+        }
+
+        function GetWindowInnerHeight()
+        {
+            if(window.innerHeight)
+            {
+                  var innerHeight = window.innerHeight;
+            }
+            else if(document.documentElement)
+            {
+                  var innerHeight = document.documentElement.clientHeight;
+            }
+            else
+            {
+                  var innerHeight = document.body.clientHeight;
+            }
+
+            return innerHeight;
+        }
+
+        function Draw()
+        {
+            if (this.m_backgroundCanvasContext != null)
+            {
+                var nWidth = GetWindowInnerWidth();
+                var nHeight = GetWindowInnerHeight();
+
+                this.m_backgroundCanvasContext.clearRect(0, 0, nWidth, nHeight);
+
+                this.m_backgroundCanvasContext.fillStyle = "#0000000";
+              
+                this.m_backgroundCanvasContext.fillRect(0, 0, nWidth, nHeight);
+            }
+        }
+
+        function OnMouseDown(mouseEvent)
+        {
+            this.m_parent.m_bLeftMouseDown = true;
+
+            //alert(this.m_parent.m_websocketConnection);
+
+            //alert(this.m_parent.m_backgroundCanvasContext);
+        }
+
+        function OnMouseMove(mouseEvent)
+        {
+            if (this.m_parent.m_bLeftMouseDown)
+            {
+                var x = mouseEvent.clientX;
+                var y = mouseEvent.clientY;
+    
+                this.m_parent.m_backgroundCanvasContext.strokeStyle = "yellow";
+                	
+                this.m_parent.m_backgroundCanvasContext.beginPath();
+                	
+                this.m_parent.m_backgroundCanvasContext.moveTo(x - 1, y);
+                this.m_parent.m_backgroundCanvasContext.lineTo(x + 1, y);
+                        
+                this.m_parent.m_backgroundCanvasContext.stroke();
+
+                var buffer = new ArrayBuffer(12);
+
+                var dataview = new DataView(buffer);
+
+                dataview.setInt32(0, 0, true);
+                dataview.setInt32(4, x, true);
+                dataview.setInt32(8, y, true);
+
+                this.m_parent.m_websocketConnection.send(buffer);
+            }
+        }
+
+        function OnMouseUp(mouseEvent)
+        {
+            this.m_parent.m_bLeftMouseDown = false;
+        }
+
+        function CreateDrawingCanvas()
+        {
+            this.m_backgroundCanvas = CreateCanvas(0, 0, GetWindowInnerWidth(), GetWindowInnerHeight(), document.body, "ID", "0px", true);
+
+            this.m_backgroundCanvas.m_parent = this;
+
+            this.m_backgroundCanvasContext = this.m_backgroundCanvas.getContext('2d');
+
+            this.m_backgroundCanvas.addEventListener('mouseup', this.OnMouseUp, false);
+            this.m_backgroundCanvas.addEventListener('mousedown', this.OnMouseDown, false);
+	        this.m_backgroundCanvas.addEventListener('mousemove', this.OnMouseMove, false);
+
+            Draw();
+        }
+
+        function CreateWebSocket()
+        {
+            this.m_websocketConnection = new WebSocket("wss://socketeer.azurewebsites.net");
+
+            this.m_websocketConnection.binaryType = "arraybuffer";
+
+            this.m_websocketConnection.m_parent = this;
+
+            this.m_websocketConnection.onopen = OnWebSocketBinConnectionOpen;
+            this.m_websocketConnection.onclose = OnWebSocketBinConnectionClose;
+            this.m_websocketConnection.onerror = OnWebSocketConnectionError;
+            this.m_websocketConnection.onmessage = OnWebSocketBinConnectionMessage;
+        }
+
+        function OnLoad()
+        {
+            document.body.scroll = "no";
+            document.documentElement.style.overflow = 'hidden';
+            document.oncontextmenu = function () { return false; };
+
+            CreateWebSocket();
+
+            CreateDrawingCanvas();
+        }
+
+        function OnSize()
+        {
+		    this.m_backgroundCanvas.width = GetWindowInnerWidth();
+            this.m_backgroundCanvas.height = GetWindowInnerHeight();
+
+            Draw();
+        }
+
+    </script>
+
+  </head>
+
+  <body onLoad="OnLoad()" onresize="OnSize()" style="background-color": #000000>
+   
+  </body>
+</html>
