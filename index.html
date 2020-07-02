@@ -2,31 +2,55 @@
 <html lang="en">
   <head>
 
-    <title>Azure App Service - Sample Static HTML Site OK</title>
+    <title>mobeon</title>
 
     <script type="text/javascript">
 
-        this.m_bLeftMouseDown = false;
+        var AWAITING_EVENTS = {"NONE":0, "ACCEPTANCE":1};
+
+        this.m_nButtonWidth = 100;
+        this.m_nButtonHeight = 30;
+        this.m_sendTextArea = null;
+        this.m_arrClientButtons = [];
+        this.m_receiveTextArea = null;
         this.m_websocketConnection = null;
+        this.m_awaitingEvent = AWAITING_EVENTS.NONE;
 
-        function CreateCanvas(x,y,width,height,parentElement,szID,szBorder,bAdd)
+        function CreateTextArea(x, y, width, height, parentElement, szInnerHTML, szID)
         {
-            canvas = document.createElement("canvas");
+            var newTextArea = document.createElement("textarea");
 
-            canvas.id = szID;
-            canvas.style.left = x.toString() + 'px';
-            canvas.style.top = y.toString() + 'px';
-            canvas.style.position = "absolute";
-            canvas.style.border = szBorder;
-            canvas.width = width;
-            canvas.height = height;
+            newTextArea.id = szID;
+            newTextArea.style.position = "absolute";
+            newTextArea.style.left = x.toString() + 'px';
+            newTextArea.style.top = y.toString() + 'px';
+            newTextArea.style.right = y.toString() + 'px';
+            newTextArea.style.width = width.toString() + 'px';
+            newTextArea.style.height = height.toString() + 'px';
+            newTextArea.type = "text";
+            newTextArea.value = szInnerHTML;
+            newTextArea.style.resize = "none";
+            parentElement.appendChild(newTextArea);
+
+            return newTextArea;
+        }
+
+        function CreateButton(x, y, width, height, parentElement, onClickFunction, szInnerHTML, szID)
+        {
+            var newButton = document.createElement("input");
+
+            newButton.id = szID;
+            newButton.style.position = "absolute";
+            newButton.style.left = x.toString() + 'px';
+            newButton.style.top = y.toString() + 'px';
+            newButton.style.width = width.toString() + 'px';
+            newButton.style.height = height.toString() + 'px';
+            newButton.type = "button";
+            newButton.value = szInnerHTML;
+            newButton.onclick = onClickFunction;
+            parentElement.appendChild(newButton);
     
-            if(bAdd)
-            {
-                parentElement.appendChild(canvas);
-            }
-    
-            return canvas;
+            return newButton;
         }
 
         function OnWebSocketBinConnectionMessage(event)
@@ -35,14 +59,7 @@
             {
                 var szText = event.data.toString();
 
-                if (szText.indexOf("Server connection accepted") >= 0)
-                {
-                    document.title = szText;
-                }
-                else
-                {
-                    alert(event.data.toString());
-                }
+                this.m_parent.ProcessIncomingASCIIMessage(szText);
             }
             else
             {
@@ -56,21 +73,58 @@
                 {
                     var x = dataview.getInt32(8, true);
                     var y = dataview.getInt32(12, true);
-                	    
-                    this.m_parent.m_backgroundCanvasContext.strokeStyle = "white";
-				
-					this.m_parent.m_backgroundCanvasContext.beginPath();
-				
-					this.m_parent.m_backgroundCanvasContext.moveTo(x - 1, y);
-                    this.m_parent.m_backgroundCanvasContext.lineTo(x + 1, y);
-                    
-                    this.m_parent.m_backgroundCanvasContext.stroke();
                 }
                 else if(nOpCode == 1)
                 {
                     //document.title = "X" + Math.random();
                 }
             }
+        }
+
+        function ProcessIncomingASCIIMessage(szText)
+        {
+            if (szText.indexOf("Server connection accepted") >= 0)
+            {
+                document.title = szText;
+
+                this.StartAwaitingAcceptance();
+            }
+            else
+            {
+                if(this.m_awaitingEvent = AWAITING_EVENTS.ACCEPTANCE)
+                {
+                    this.m_receiveTextArea.value = szText;
+                }
+            }
+        }
+
+        function StartAwaitingAcceptance()
+        {
+            this.m_awaitingEvent = AWAITING_EVENTS.ACCEPTANCE;
+
+            this.m_websocketConnection.send("Name = David");
+        }
+
+        function AddClientButton(bLayoutControls)
+        {
+            var szTextID = "Button " + this.m_arrClientButtons.length.toString();
+
+            this.m_arrClientButtons.push(CreateButton(100,100,this.m_nButtonWidth,this.m_nButtonHeight,document.body,this.OnButtonClick, szTextID, szTextID));
+
+            var nID = this.m_arrClientButtons.length - 1;
+
+            this.m_arrClientButtons[nID].m_parent = this;
+            this.m_arrClientButtons[nID].m_clientID = nID;
+
+            if(bLayoutControls)
+            {
+                LayoutControls();
+            }
+        }
+
+        function OnButtonClick()
+        {
+            
         }
 
         function OnWebSocketBinConnectionClose()
@@ -82,8 +136,8 @@
 
         function OnWebSocketBinConnectionOpen()
         {
-            //document.title = "OK";
-            //alert("Connection Opened");
+            this.m_parent.AddClientButton(false);
+            this.m_parent.LayoutControls();
         }
 
         function OnWebSocketConnectionError(error)
@@ -127,76 +181,43 @@
             return innerHeight;
         }
 
-        function Draw()
+        function LayoutControls()
         {
-            if (this.m_backgroundCanvasContext != null)
+            var nBorder = 10;
+            var nHalfBorder = nBorder / 2;
+            var nTwiceBorder = 2 * nBorder;
+            var nThriceBorder = 3 * nBorder;
+            var screenWidth = GetWindowInnerWidth();
+            var screenHeight = GetWindowInnerHeight();
+            var nTextAreaWidth = (screenWidth - nThriceBorder) / 2;
+            var receiveTextAreaLeft = nTwiceBorder + nTextAreaWidth;
+            var nTextAreaHeight = screenHeight / 3;
+        
+            this.m_sendTextArea.style.left = nHalfBorder.toString() + "px";
+            this.m_sendTextArea.style.width = nTextAreaWidth.toString() + "px";
+            this.m_sendTextArea.style.height = nTextAreaHeight.toString() + "px";
+
+            this.m_receiveTextArea.style.left = receiveTextAreaLeft.toString() + "px";
+            this.m_receiveTextArea.style.width = nTextAreaWidth.toString() + "px";
+            this.m_receiveTextArea.style.height = nTextAreaHeight.toString() + "px";
+
+            var buttonRow1Top = nThriceBorder + nTextAreaHeight;
+        
+            for(var nButton = 0; nButton < this.m_arrClientButtons.length; nButton++)
             {
-                var nWidth = GetWindowInnerWidth();
-                var nHeight = GetWindowInnerHeight();
+                var nButtonLeft = nThriceBorder + nButton * (this.m_nButtonWidth + nBorder);
 
-                this.m_backgroundCanvasContext.clearRect(0, 0, nWidth, nHeight);
-
-                this.m_backgroundCanvasContext.fillStyle = "#33AA11";
-              
-                this.m_backgroundCanvasContext.fillRect(0, 0, nWidth, nHeight);
+                this.m_arrClientButtons[nButton].style.top = buttonRow1Top.toString() + "px";
+                this.m_arrClientButtons[nButton].style.left = nButtonLeft.toString() + "px";
             }
         }
 
-        function OnMouseDown(mouseEvent)
+        function CreateControls()
         {
-            this.m_parent.m_bLeftMouseDown = true;
+            this.m_sendTextArea = CreateTextArea(10, 10, 400, 100, document.body, "", "SentMessagesTextArea");
+            this.m_receiveTextArea = CreateTextArea(10, 10, 400, 100, document.body, "", "ReceiveMessagesTextArea");
 
-            //alert(this.m_parent.m_websocketConnection);
-
-            //alert(this.m_parent.m_backgroundCanvasContext);
-        }
-
-        function OnMouseMove(mouseEvent)
-        {
-            if (this.m_parent.m_bLeftMouseDown)
-            {
-                var x = mouseEvent.clientX;
-                var y = mouseEvent.clientY;
-    
-                this.m_parent.m_backgroundCanvasContext.strokeStyle = "yellow";
-                	
-                this.m_parent.m_backgroundCanvasContext.beginPath();
-                	
-                this.m_parent.m_backgroundCanvasContext.moveTo(x - 1, y);
-                this.m_parent.m_backgroundCanvasContext.lineTo(x + 1, y);
-                        
-                this.m_parent.m_backgroundCanvasContext.stroke();
-
-                var buffer = new ArrayBuffer(12);
-
-                var dataview = new DataView(buffer);
-
-                dataview.setInt32(0, 0, true);
-                dataview.setInt32(4, x, true);
-                dataview.setInt32(8, y, true);
-
-                this.m_parent.m_websocketConnection.send(buffer);
-            }
-        }
-
-        function OnMouseUp(mouseEvent)
-        {
-            this.m_parent.m_bLeftMouseDown = false;
-        }
-
-        function CreateDrawingCanvas()
-        {
-            this.m_backgroundCanvas = CreateCanvas(0, 0, GetWindowInnerWidth(), GetWindowInnerHeight(), document.body, "ID", "0px", true);
-
-            this.m_backgroundCanvas.m_parent = this;
-
-            this.m_backgroundCanvasContext = this.m_backgroundCanvas.getContext('2d');
-
-            this.m_backgroundCanvas.addEventListener('mouseup', this.OnMouseUp, false);
-            this.m_backgroundCanvas.addEventListener('mousedown', this.OnMouseDown, false);
-	        this.m_backgroundCanvas.addEventListener('mousemove', this.OnMouseMove, false);
-
-            Draw();
+            LayoutControls();
         }
 
         function CreateWebSocket()
@@ -219,24 +240,20 @@
             document.documentElement.style.overflow = 'hidden';
             document.oncontextmenu = function () { return false; };
 
+            CreateControls();
             CreateWebSocket();
-
-            CreateDrawingCanvas();
         }
 
         function OnSize()
         {
-		    this.m_backgroundCanvas.width = GetWindowInnerWidth();
-            this.m_backgroundCanvas.height = GetWindowInnerHeight();
-
-            Draw();
+            LayoutControls();
         }
 
     </script>
 
   </head>
 
-  <body onLoad="OnLoad()" onresize="OnSize()" style="background-color": #33AA11>
+  <body onLoad="OnLoad()" onresize="OnSize()" style="background-color:#FF0000">
    
   </body>
 </html>
