@@ -6,15 +6,40 @@
 
     <script type="text/javascript">
 
-        var AWAITING_EVENTS = {"NONE":0, "ACCEPTANCE":1};
+        var OP_CODES = { "NUM_OTHER_CLIENTS": 1 };
+        var MODES = { "STARTING": 0,  "RUNNING":1 };
+        var AWAITING_EVENTS = {"NONE":0, "ACCEPTANCE":1, "CLIENT_LIST":2};
 
+        this.m_szName = "";
+        this.m_nameButton = null;
+        this.m_nameTextBox = null
         this.m_nButtonWidth = 100;
         this.m_nButtonHeight = 30;
+        this.m_nTextboxWidth = 200;
+        this.m_nTextboxHeight = 20;
         this.m_sendTextArea = null;
+        this.m_mode = MODES.STARTING;
         this.m_arrClientButtons = [];
         this.m_receiveTextArea = null;
-        this.m_websocketConnection = null;
+        this.m_websocketConnection = null;;
         this.m_awaitingEvent = AWAITING_EVENTS.NONE;
+
+        function CreateTextbox(x, y, width, height, parentElement, szInnerHTML, szID)
+        {
+            var newTextbox = document.createElement("input");
+
+            newTextbox.id = szID;
+            newTextbox.style.position = "absolute";
+            newTextbox.style.left = x.toString() + 'px';
+            newTextbox.style.top = y.toString() + 'px';
+            newTextbox.style.width = width.toString() + 'px';
+            newTextbox.style.height = height.toString() + 'px';
+            newTextbox.value = szInnerHTML;
+            newTextbox.style.textAlign = "center";
+            parentElement.appendChild(newTextbox);
+
+            return newTextbox;
+        }
 
         function CreateTextArea(x, y, width, height, parentElement, szInnerHTML, szID)
         {
@@ -57,27 +82,30 @@
         {
             if (event.data.toString() != "[object ArrayBuffer]")
             {
-                var szText = event.data.toString();
-
-                this.m_parent.ProcessIncomingASCIIMessage(szText);
+                this.m_parent.ProcessIncomingASCIIMessage(event.data.toString());
             }
             else
             {
-                var dataview = new DataView(event.data);
-                 
-                var nOpCode = dataview.getInt32(4, true);
+                this.m_parent.ProcessIncomingBinaryMessage(event.data);
+            }
+        }
+
+        function ProcessIncomingBinaryMessage(data)
+        {
+            var dataview = new DataView(data);
                 
-                var nClientUniqueID = dataview.getInt32(0, true);
+            var nOpCode = dataview.getInt32(0, true);
                 
-                if (nOpCode == 0)
+            if (nOpCode == OP_CODES.NUM_OTHER_CLIENTS)
+            {
+                var nNumClients = dataview.getInt32(4, true);
+
+                for(var nClient = 0; nClient < nNumClients; nClient++)
                 {
-                    var x = dataview.getInt32(8, true);
-                    var y = dataview.getInt32(12, true);
+                    this.AddClientButton(false);
                 }
-                else if(nOpCode == 1)
-                {
-                    //document.title = "X" + Math.random();
-                }
+
+                this.LayoutControls();
             }
         }
 
@@ -94,6 +122,15 @@
                 if(this.m_awaitingEvent = AWAITING_EVENTS.ACCEPTANCE)
                 {
                     this.m_receiveTextArea.value = szText;
+
+                    this.m_awaitingEvent = AWAITING_EVENTS.CLIENT_LIST;
+
+                    var buffer = new ArrayBuffer(4);
+                    var dataview = new DataView(buffer);
+
+                    dataview.setInt32(0, 1, true); // 1 = Return Client Names
+        
+                    this.m_websocketConnection.send(buffer);
                 }
             }
         }
@@ -102,7 +139,7 @@
         {
             this.m_awaitingEvent = AWAITING_EVENTS.ACCEPTANCE;
 
-            this.m_websocketConnection.send("Name = David");
+            this.m_websocketConnection.send("Name = " + this.m_szName);
         }
 
         function AddClientButton(bLayoutControls)
@@ -136,8 +173,6 @@
 
         function OnWebSocketBinConnectionOpen()
         {
-            this.m_parent.AddClientButton(false);
-            this.m_parent.LayoutControls();
         }
 
         function OnWebSocketConnectionError(error)
@@ -220,6 +255,53 @@
             LayoutControls();
         }
 
+        function LayoutUserIDControls()
+        {
+            var screenWidth = GetWindowInnerWidth();
+            var screenHeight = GetWindowInnerHeight();
+        
+            var nTextboxLeft = (screenWidth - this.m_nTextboxWidth) / 2;
+            var nButtonLeft = (screenWidth - this.m_nButtonWidth) / 2;
+            var nTextboxTop = screenHeight / 2 - this.m_nTextboxHeight;
+            var nButtonTop = nTextboxTop + this.m_nTextboxHeight + 15;
+        
+            this.m_nameTextBox.style.left =  nTextboxLeft + "px";
+            this.m_nameTextBox.style.top =  nTextboxTop + "px";
+
+            this.m_nameButton.style.left = nButtonLeft + "px";
+            this.m_nameButton.style.top = nButtonTop + "px";
+        }
+
+        function Start()
+        {
+            this.m_szName = this.m_nameTextBox.value;
+
+            document.getElementById("NameTextBox").remove();
+            document.getElementById("UserNameButton").remove();
+
+            this.m_mode = MODES.RUNNING;
+
+            this.CreateControls();
+            this.CreateWebSocket();
+        }
+
+        function OnUserNameButtonClick()
+        {
+            this.m_parent.Start();
+        }
+
+        function CreateUserIDControls()
+        {
+            this.m_nameTextBox = CreateTextbox(10, 10, this.m_nTextboxWidth, this.m_nTextboxHeight, document.body, "", "NameTextBox");
+            this.m_nameButton = CreateButton(100,100,this.m_nButtonWidth, this.m_nButtonHeight,document.body,this.OnUserNameButtonClick, "Start", "UserNameButton");
+
+            this.m_nameButton.m_parent = this;
+
+            this.m_nameTextBox.value = "Default Name";
+
+            this.LayoutUserIDControls();
+        }
+
         function CreateWebSocket()
         {
             this.m_websocketConnection = new WebSocket("wss://mobeon.azurewebsites.net");
@@ -240,13 +322,22 @@
             document.documentElement.style.overflow = 'hidden';
             document.oncontextmenu = function () { return false; };
 
-            CreateControls();
-            CreateWebSocket();
+            CreateUserIDControls();
+
+            //CreateControls();
+            //CreateWebSocket();
         }
 
         function OnSize()
         {
-            LayoutControls();
+            if(this.m_mode == MODES.STARTING)
+            {
+                LayoutUserIDControls();
+            }
+            else
+            {
+                LayoutControls();
+            }
         }
 
     </script>
