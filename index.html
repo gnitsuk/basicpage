@@ -92,7 +92,7 @@
 
         function ProcessIncomingBinaryMessage(data)
         {
-            var dataview = new DataView(data);
+            /*var dataview = new DataView(data);
                 
             var nOpCode = dataview.getInt32(0, true);
                 
@@ -106,7 +106,7 @@
                 }
 
                 this.LayoutControls();
-            }
+            }*/
         }
 
         function ProcessIncomingASCIIMessage(szText)
@@ -134,11 +134,31 @@
                 }
                 else if (this.m_awaitingEvent == AWAITING_EVENTS.CLIENT_LIST)
                 {
-                    alert(szText);
-
                     this.m_awaitingEvent == AWAITING_EVENTS.NONE;
+
+                    this.ProcessInitialClientList(szText);
                 }
             }
+        }
+
+        function ProcessInitialClientList(szTokenizedClientList)
+        {
+            var arrClients = szTokenizedClientList.split(":");
+            
+            var nNumClients = parseInt(arrClients[0]);
+
+            var nIndex = 2;
+
+            for (var nClient = 0; nClient < nNumClients; nClient++)
+            {
+                AddClientButton(false, arrClients[nIndex]);
+
+                this.m_arrClientButtons[this.m_arrClientButtons.length - 1].m_nUniqueID = parseInt(arrClients[nIndex - 1]);
+
+                nIndex += 2;
+            }
+
+            LayoutControls();
         }
 
         function StartAwaitingAcceptance()
@@ -148,11 +168,11 @@
             this.m_websocketConnection.send("Name = " + this.m_szName);
         }
 
-        function AddClientButton(bLayoutControls)
+        function AddClientButton(bLayoutControls, szText)
         {
             var szTextID = "Button " + this.m_arrClientButtons.length.toString();
 
-            this.m_arrClientButtons.push(CreateButton(100,100,this.m_nButtonWidth,this.m_nButtonHeight,document.body,this.OnButtonClick, szTextID, szTextID));
+            this.m_arrClientButtons.push(CreateButton(100,100,this.m_nButtonWidth,this.m_nButtonHeight,document.body,this.OnButtonClick, szText, szTextID));
 
             var nID = this.m_arrClientButtons.length - 1;
 
@@ -167,7 +187,7 @@
 
         function OnButtonClick()
         {
-            
+            alert(this.m_nUniqueID);
         }
 
         function OnWebSocketBinConnectionClose()
@@ -257,6 +277,8 @@
         {
             this.m_sendTextArea = CreateTextArea(10, 10, 400, 100, document.body, "", "SentMessagesTextArea");
             this.m_receiveTextArea = CreateTextArea(10, 10, 400, 100, document.body, "", "ReceiveMessagesTextArea");
+
+            this.m_receiveTextArea.readOnly = true;
 
             LayoutControls();
         }
