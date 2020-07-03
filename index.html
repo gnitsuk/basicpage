@@ -119,7 +119,7 @@
             }
             else
             {
-                if(this.m_awaitingEvent = AWAITING_EVENTS.ACCEPTANCE)
+                if (this.m_awaitingEvent == AWAITING_EVENTS.ACCEPTANCE)
                 {
                     this.m_receiveTextArea.value = szText;
 
@@ -129,8 +129,14 @@
                     var dataview = new DataView(buffer);
 
                     dataview.setInt32(0, 1, true); // 1 = Return Client Names
-        
+
                     this.m_websocketConnection.send(buffer);
+                }
+                else if (this.m_awaitingEvent == AWAITING_EVENTS.CLIENT_LIST)
+                {
+                    alert(szText);
+
+                    this.m_awaitingEvent == AWAITING_EVENTS.NONE;
                 }
             }
         }
@@ -274,12 +280,14 @@
 
         function Start()
         {
-            this.m_szName = this.m_nameTextBox.value;
+            this.m_szName = this.m_nameTextBox.value
 
             var regex = /^\s*\S+(\s?\S)*\s*$/;
-
+            
             if (regex.test(this.m_szName))
             {
+                this.m_szName = this.m_nameTextBox.value.trim();
+
                 document.getElementById("NameTextBox").remove();
                 document.getElementById("UserNameButton").remove();
 
@@ -298,13 +306,17 @@
         function CreateUserIDControls()
         {
             this.m_nameTextBox = CreateTextbox(10, 10, this.m_nTextboxWidth, this.m_nTextboxHeight, document.body, "", "NameTextBox");
-            this.m_nameButton = CreateButton(100,100,this.m_nButtonWidth, this.m_nButtonHeight,document.body,this.OnUserNameButtonClick, "Start", "UserNameButton");
+            this.m_nameButton = CreateButton(100, 100, this.m_nButtonWidth, this.m_nButtonHeight, document.body, this.OnUserNameButtonClick, "Start", "UserNameButton");
 
             this.m_nameButton.m_parent = this;
 
             this.m_nameTextBox.value = "Default Name";
 
             this.LayoutUserIDControls();
+
+            this.m_nameTextBox.focus();
+            this.m_nameTextBox.select();
+
         }
 
         function CreateWebSocket()
