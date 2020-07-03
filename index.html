@@ -276,13 +276,18 @@
         {
             this.m_szName = this.m_nameTextBox.value;
 
-            document.getElementById("NameTextBox").remove();
-            document.getElementById("UserNameButton").remove();
+            var regex = /^\s*\S+(\s?\S)*\s*$/;
 
-            this.m_mode = MODES.RUNNING;
+            if (regex.test(this.m_szName))
+            {
+                document.getElementById("NameTextBox").remove();
+                document.getElementById("UserNameButton").remove();
 
-            this.CreateControls();
-            this.CreateWebSocket();
+                this.m_mode = MODES.RUNNING;
+
+                this.CreateControls();
+                this.CreateWebSocket();
+            }
         }
 
         function OnUserNameButtonClick()
@@ -323,9 +328,6 @@
             document.oncontextmenu = function () { return false; };
 
             CreateUserIDControls();
-
-            //CreateControls();
-            //CreateWebSocket();
         }
 
         function OnSize()
