@@ -13,7 +13,7 @@
         this.m_szName = "";
         this.m_nameButton = null;
         this.m_nameTextBox = null
-        this.m_nButtonWidth = 100;
+        this.m_nButtonWidth = 150;
         this.m_nButtonHeight = 30;
         this.m_nTextboxWidth = 200;
         this.m_nTextboxHeight = 20;
@@ -109,6 +109,60 @@
             }*/
         }
 
+        function RequestClients(szText)
+        {
+            this.m_receiveTextArea.value = szText;
+
+            this.m_awaitingEvent = AWAITING_EVENTS.CLIENT_LIST;
+
+            var buffer = new ArrayBuffer(4);
+            var dataview = new DataView(buffer);
+
+            dataview.setInt32(0, 1, true); // 1 = Return Client Names
+
+            this.m_websocketConnection.send(buffer);
+        }
+
+        function ProcessNewClient(szText)
+        {
+            var arrEntries = szText.split(":");
+
+            var szUniqueID = arrEntries[1];
+                        
+            AddClientButton(true, arrEntries[2], szUniqueID);
+                        
+            this.m_arrClientButtons[this.m_arrClientButtons.length - 1].m_nUniqueID = parseInt(szUniqueID);
+        }
+
+        function ProcessClientDisconnected(szText)
+        {
+            var arrEntries = szText.split(":");
+
+            var szUniqueID = arrEntries[1];
+
+            var szButtonDOM_ID = "Button " + szUniqueID;
+
+            var button = document.getElementById(szButtonDOM_ID);
+
+            var nIndex = -1;
+            for (var nClientButton = 0; nClientButton < this.m_arrClientButtons.length && nIndex == -1; nClientButton++)
+            {
+                if (this.m_arrClientButtons[nClientButton].id == szButtonDOM_ID)
+                {
+                    nIndex = nClientButton;
+                }
+            }
+
+            if (nIndex >= 0)
+            {
+                this.m_arrClientButtons.splice(nIndex, 1);
+
+                document.getElementById(szButtonDOM_ID).remove();
+
+                LayoutControls();
+            }
+        }
+
         function ProcessIncomingASCIIMessage(szText)
         {
             if (szText.indexOf("Server connection accepted") >= 0)
@@ -121,22 +175,24 @@
             {
                 if (this.m_awaitingEvent == AWAITING_EVENTS.ACCEPTANCE)
                 {
-                    this.m_receiveTextArea.value = szText;
-
-                    this.m_awaitingEvent = AWAITING_EVENTS.CLIENT_LIST;
-
-                    var buffer = new ArrayBuffer(4);
-                    var dataview = new DataView(buffer);
-
-                    dataview.setInt32(0, 1, true); // 1 = Return Client Names
-
-                    this.m_websocketConnection.send(buffer);
+                    this.RequestClients(szText);
                 }
                 else if (this.m_awaitingEvent == AWAITING_EVENTS.CLIENT_LIST)
                 {
-                    this.m_awaitingEvent == AWAITING_EVENTS.NONE;
+                    this.m_awaitingEvent = AWAITING_EVENTS.NONE;
 
                     this.ProcessInitialClientList(szText);
+                }
+                else
+                {
+                    if (szText.indexOf("New client joined") >= 0)
+                    {
+                        this.ProcessNewClient(szText);
+                    }
+                    else if (szText.indexOf("Client disconnected") >= 0)
+                    {
+                        this.ProcessClientDisconnected(szText);
+                    }
                 }
             }
         }
@@ -151,9 +207,11 @@
 
             for (var nClient = 0; nClient < nNumClients; nClient++)
             {
-                AddClientButton(false, arrClients[nIndex]);
+                var szUniqueID = arrClients[nIndex - 1];
 
-                this.m_arrClientButtons[this.m_arrClientButtons.length - 1].m_nUniqueID = parseInt(arrClients[nIndex - 1]);
+                AddClientButton(false, arrClients[nIndex], szUniqueID);
+
+                this.m_arrClientButtons[this.m_arrClientButtons.length - 1].m_nUniqueID = parseInt(szUniqueID);
 
                 nIndex += 2;
             }
@@ -168,9 +226,9 @@
             this.m_websocketConnection.send("Name = " + this.m_szName);
         }
 
-        function AddClientButton(bLayoutControls, szText)
+        function AddClientButton(bLayoutControls, szText, szDOM_ID)
         {
-            var szTextID = "Button " + this.m_arrClientButtons.length.toString();
+            var szTextID = "Button " + szDOM_ID;
 
             this.m_arrClientButtons.push(CreateButton(100,100,this.m_nButtonWidth,this.m_nButtonHeight,document.body,this.OnButtonClick, szText, szTextID));
 
@@ -187,14 +245,12 @@
 
         function OnButtonClick()
         {
-            alert(this.m_nUniqueID);
+            //alert(this.m_nUniqueID);
         }
 
         function OnWebSocketBinConnectionClose()
         {
             this.m_parent.m_websocketConnection = null;
-
-            //alert("WS CLOSED");
         }
 
         function OnWebSocketBinConnectionOpen()
@@ -203,7 +259,6 @@
 
         function OnWebSocketConnectionError(error)
         {
-            //alert("Websocket Error");
         }
 
         function GetWindowInnerWidth()
@@ -263,7 +318,7 @@
             this.m_receiveTextArea.style.height = nTextAreaHeight.toString() + "px";
 
             var buttonRow1Top = nThriceBorder + nTextAreaHeight;
-        
+
             for(var nButton = 0; nButton < this.m_arrClientButtons.length; nButton++)
             {
                 var nButtonLeft = nThriceBorder + nButton * (this.m_nButtonWidth + nBorder);
@@ -308,7 +363,25 @@
             
             if (regex.test(this.m_szName))
             {
+                var szName = "";
+
                 this.m_szName = this.m_nameTextBox.value.trim();
+
+                var arrNames = this.m_szName.split(" ");
+
+                for (var nName = 0; nName < arrNames.length; nName++)
+                {
+                    var szFirst = arrNames[nName].substring(0, 1).toUpperCase();
+
+                    szName += szFirst + arrNames[nName].slice(1);
+
+                    if (nName < arrNames.length - 1)
+                    {
+                        szName += " ";
+                    }
+                }
+
+                this.m_szName = szName;
 
                 document.getElementById("NameTextBox").remove();
                 document.getElementById("UserNameButton").remove();
