@@ -163,6 +163,15 @@
             }
         }
 
+        function ProcessClientMessage(szText)
+        {
+            var arrMessage = szText.split(":");            
+
+            var szFromName = arrMessage[0].substring(5, arrMessage[0].length).trim();
+            
+            this.m_receiveTextArea.value += "\nFrom " + szFromName + " : " + arrMessage[1].trim();
+        }
+
         function ProcessIncomingASCIIMessage(szText)
         {
             if (szText.indexOf("Server connection accepted") >= 0)
@@ -193,6 +202,10 @@
                     {
                         this.ProcessClientDisconnected(szText);
                     }
+                    else
+                    {
+                        this.ProcessClientMessage(szText);
+                    }
                 }
             }
         }
@@ -215,6 +228,8 @@
 
                 nIndex += 2;
             }
+
+            document.title = this.m_szName + " : " + document.title;
 
             LayoutControls();
         }
@@ -245,7 +260,9 @@
 
         function OnButtonClick()
         {
-            //alert(this.m_nUniqueID);
+            this.m_parent.m_websocketConnection.send("Message = " + this.m_nUniqueID.toString() + ":" + this.m_parent.m_sendTextArea.value);
+
+            this.m_parent.m_sendTextArea.value = "";
         }
 
         function OnWebSocketBinConnectionClose()
