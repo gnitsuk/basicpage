@@ -170,6 +170,8 @@
             var szFromName = arrMessage[0].substring(5, arrMessage[0].length).trim();
             
             this.m_receiveTextArea.value += "\nFrom " + szFromName + " : " + arrMessage[1].trim();
+
+            this.m_receiveTextArea.scrollTop = this.m_receiveTextArea.scrollHeight;
         }
 
         function ProcessIncomingASCIIMessage(szText)
