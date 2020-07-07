@@ -336,13 +336,26 @@
             this.m_receiveTextArea.style.width = nTextAreaWidth.toString() + "px";
             this.m_receiveTextArea.style.height = nTextAreaHeight.toString() + "px";
 
-            var buttonRow1Top = nThriceBorder + nTextAreaHeight;
+            var buttonRowTop = nThriceBorder + nTextAreaHeight;
+
+            var nButtonOver = 0;
 
             for(var nButton = 0; nButton < this.m_arrClientButtons.length; nButton++)
             {
-                var nButtonLeft = nThriceBorder + nButton * (this.m_nButtonWidth + nBorder);
+                var nButtonLeft = nThriceBorder + nButtonOver * (this.m_nButtonWidth + nBorder);
 
-                this.m_arrClientButtons[nButton].style.top = buttonRow1Top.toString() + "px";
+                if (nButtonLeft + this.m_nButtonWidth > screenWidth)
+                {
+                    nButtonOver = 1;
+                    nButtonLeft = nThriceBorder;
+                    buttonRowTop += this.m_nButtonHeight;
+                }
+                else
+                {
+                    nButtonOver++;
+                }
+
+                this.m_arrClientButtons[nButton].style.top = buttonRowTop.toString() + "px";
                 this.m_arrClientButtons[nButton].style.left = nButtonLeft.toString() + "px";
             }
         }
