@@ -318,22 +318,27 @@
 
         function LayoutControls()
         {
-            var nBorder = 10;
-            var nHalfBorder = nBorder / 2;
-            var nTwiceBorder = 2 * nBorder;
+            var nBorder = 20;
+            var factor = 1.2;
             var nThriceBorder = 3 * nBorder;
             var screenWidth = GetWindowInnerWidth();
             var screenHeight = GetWindowInnerHeight();
-            var nTextAreaWidth = (screenWidth - nThriceBorder) / 2;
-            var receiveTextAreaLeft = nTwiceBorder + nTextAreaWidth;
+            var textAreaWidth = (screenWidth - nBorder) / 2;
             var nTextAreaHeight = screenHeight / 3;
-        
-            this.m_sendTextArea.style.left = nHalfBorder.toString() + "px";
-            this.m_sendTextArea.style.width = nTextAreaWidth.toString() + "px";
+
+            textAreaWidth -= factor * nBorder;
+
+            this.m_sendTextArea.style.top = nBorder.toString() + "px";
+            this.m_sendTextArea.style.left = nBorder.toString() + "px";
+            this.m_sendTextArea.style.width = textAreaWidth + "px";
             this.m_sendTextArea.style.height = nTextAreaHeight.toString() + "px";
 
-            this.m_receiveTextArea.style.left = receiveTextAreaLeft.toString() + "px";
-            this.m_receiveTextArea.style.width = nTextAreaWidth.toString() + "px";
+            var left = 2 * factor * nBorder + textAreaWidth;
+            var width = screenWidth - (left + factor * nBorder);
+
+            this.m_receiveTextArea.style.top = nBorder.toString() + "px";
+            this.m_receiveTextArea.style.left = left + "px";
+            this.m_receiveTextArea.style.width = width + "px";
             this.m_receiveTextArea.style.height = nTextAreaHeight.toString() + "px";
 
             var buttonRowTop = nThriceBorder + nTextAreaHeight;
